@@ -40,8 +40,8 @@ export function isPrepped(ns: NS, server: string): boolean{
  * @param hostname Hostname of the server you want to prep
  */
 export async function prepServer(ns: NS, hostname: string) {
-    const prepInfo = getPrepInfo(ns, hostname);
-    ns.print("INFO: PREPPING " +  hostname + " WITH " prepInfo);
+    let prepInfo = getPrepInfo(ns, hostname);
+    ns.print("INFO: PREPPING " +  hostname + " WITH " prepInfo + " INITIAL THREADS");
     const delay = 25;
     const wTime = ns.getWeakenTime(hostname);
     const gTime = ns.getGrowTime(hostname);
@@ -56,6 +56,7 @@ export async function prepServer(ns: NS, hostname: string) {
         if(threadsLeft > 0) {
             ns.print(`WARN: ${threadsLeft} THREADS REMAINING FOR ${hostname}. TRYING REMAINDER IN 10 SECONDS`);
             await ns.sleep(10*1000);
+            prepInfo = getPrepInfo(ns, hostname);
         }
     }
 
@@ -101,7 +102,6 @@ function distribute(ns: NS, script: string, threads: number, args, useHome = fal
     if(threads === 0) return 0;
 
     let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
-    if(useHome) potentialServers.push("home");
 
     const distributables = potentialServers
     .filter(hostname => ns.hasRootAccess(hostname))
@@ -109,6 +109,7 @@ function distribute(ns: NS, script: string, threads: number, args, useHome = fal
 
     for(const hostname of distributables){
         if(threads === 0) break;
+        if(hostname === "home" && !useHome) continue;
 
         const server = ns.getServer(hostname);
         const usableRam = server.maxRam - server.ramUsed;
@@ -123,6 +124,14 @@ function distribute(ns: NS, script: string, threads: number, args, useHome = fal
     return threads;
 }
 //-----------------------------------------OTHER----------------------------------------------------------------------------
+
+export function movePayload(ns: NS, payload: string[]){
+    let servers = [...getServerList(ns), ...ns.getPurchasedServers()];
+    for(const server of servers){
+        if(server === "home") continue;
+        ns.scp(payload, server);
+    }
+}
 export async function main(ns: NS): Promise<void> {
     ns.disableLog('ALL'); ns.tail(); ns.clearLog();
     ns.print(getServerList(ns));

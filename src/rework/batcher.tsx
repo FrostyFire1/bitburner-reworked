@@ -1,12 +1,13 @@
 import { NS } from "@ns";
-import {getServerList, batchPotential, isPrepped, prepServer} from "./rework/lib";
+import {getServerList, batchPotential, isPrepped, prepServer, movePayload} from "./rework/lib";
 let STEAL_PERCENTAGE = 0.5;
 
 const TARGET = "silver-helix";
 
 export async function main(ns: NS) {
     ns.disableLog('ALL'); ns.clearLog(); ns.tail();
-    
+
+    movePayload(ns, ns.ls("home","scripts/payload"));
     const targets = getServerList(ns)
     .sort((a,b) => {return batchPotential(ns, b) - batchPotential(ns, a);});
     let toPrep = targets.filter(a => !isPrepped(ns, a));
