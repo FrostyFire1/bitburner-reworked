@@ -1,5 +1,7 @@
 import { NS } from "@ns";
-
+const HACK_PATH = "rework/payload/hack.js"
+const GROW_PATH = "rework/payload/grow.js"
+const WEAKEN_PATH = "rework/payload/weaken.js"
 
 export function getServerList(ns: NS): string[] {
     let servers = new Set(ns.scan("home"));
@@ -38,8 +40,7 @@ export function isPrepped(ns: NS, server: string): boolean{
  * @param hostname Hostname of the server you want to prep
  */
 export function prepServer(ns: NS, hostname: string) {
-    const [gThreads, wThreads] = getPrepInfo(ns, hostname);
-
+    const prepInfo = getPrepInfo(ns, hostname);
 }
 
 /**
@@ -47,18 +48,28 @@ export function prepServer(ns: NS, hostname: string) {
  * @remarks This function requires 'Formulas.exe' to be present on your home server
  * @param ns The ns interface
  * @param server Hostname of the server you want to prep
- * @returns 2 element array containing the required amount of grow and weaken threads.
+ * @returns Object containing the required threads.
  */
-function getPrepInfo(ns: NS, hostname: string): number[] {
-    const sInfo = ns.getServer(hostname);
-    const [curMoney, maxMoney] = [sInfo.moneyAvailable, sInfo.moneyMax];
-    const multiplier = maxMoney / curMoney;
+function getPrepInfo(ns: NS, hostname: string): object {
+    const f = ns.formulas;
+    const SEC_DEC = ns.weakenAnalyze(1,1);
+    let server = ns.getServer(hostname);
+    const player = ns.getPlayer();
 
-    const gThreads = ns.growthAnalyze(hostname, multiplier, 1);
+    const preWThreads = Math.ceil((server.hackDifficulty - server.minDifficulty) / SEC_DEC);
+    server.hackDifficulty = server.minDifficulty;
+    ns.print(`${server.hackDifficulty} <- ${server.minDifficulty}`);
+    const gThreads = f.hacking.growThreads(server, player, server.moneyMax, 1);
+    server.hackDifficulty = Math.min(server.hackDifficulty + ns.growthAnalyzeSecurity(gThreads, hostname, 1), 100);
 
-    const secIncrease = Math.min(100 - ns.gethostnameSecurityLevel(hostname), ns.growthAnalyzeSecurity(gThreads, hostname, 1));
-    const wThreads = Math.ceil(secIncrease / ns.weakenAnalyze(1,hostname,1));
-    return [gThreads, wThreads];
+    const postWThreads = Math.ceil((server.hackDifficulty - server.minDifficulty) / SEC_DEC);
+
+    return {
+        preWThreads,
+        gThreads,
+        postWThreads,
+    }
+
 }
 //-----------------------------------------OTHER----------------------------------------------------------------------------
 export async function main(ns: NS): Promise<void> {
