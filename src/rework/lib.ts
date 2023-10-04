@@ -1,7 +1,7 @@
 import { NS } from "@ns";
-const HACK_PATH = "rework/payload/hack.js"
-const GROW_PATH = "rework/payload/grow.js"
-const WEAKEN_PATH = "rework/payload/weaken.js"
+const HACK_PATH = "scripts/payload/hack.js"
+const GROW_PATH = "scripts/payload/grow.js"
+const WEAKEN_PATH = "scripts/payload/weaken.js"
 
 export function getServerList(ns: NS): string[] {
     let servers = new Set(ns.scan("home"));
@@ -42,6 +42,7 @@ export function isPrepped(ns: NS, server: string): boolean{
 export function prepServer(ns: NS, hostname: string) {
     const prepInfo = getPrepInfo(ns, hostname);
     ns.print("INFO: PREPPING " +  hostname + " WITH " prepInfo);
+    distribute(ns, WEAKEN_PATH, prepInfo.preWThreads, [hostname]);
 }
 
 /**
@@ -78,8 +79,7 @@ function getPrepInfo(ns: NS, hostname: string): object {
  * @param threads Total amount of threads to distribute the script to
  * @param useHome Optional. If set to true the function will also take up all the available ram on the home server
  */
-function distribute(ns: NS, script: string, threads: number, useHome = false): number{
-    ns.print(`INFO: DISTRIBUTING ${threads} THREADS OF ${script}`)
+function distribute(ns: NS, script: string, threads: number, args, useHome = false): number{
     let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
     if(useHome) potentialServers.push("home");
 
@@ -97,9 +97,9 @@ function distribute(ns: NS, script: string, threads: number, useHome = false): n
 
         const threadCount = Math.min(usableThreads, threads);
         threads -= threadCount;
-        ns.exec(script, hostname, threadCount);
+        const process = ns.exec(script, hostname, threadCount, ...args);
+        if(process == 0) ns.print(`ERROR: COULDN'T RUN ${script} ON ${hostname}`);
     }
-    if(threads > 0) ns.print(`WARN: ${threads} THREADS OF ${script} WERE NOT DISTRIBUTED!`);
     return threads;
 }
 //-----------------------------------------OTHER----------------------------------------------------------------------------

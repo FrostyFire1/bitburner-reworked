@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import {getServerList, batchPotential, isPrepped, prepServer} from "./rework/lib";
 let STEAL_PERCENTAGE = 0.5;
 
-const TARGET = "foodnstuff";
+const TARGET = "silver-helix";
 
 export async function main(ns: NS) {
     ns.disableLog('ALL'); ns.clearLog(); ns.tail();
