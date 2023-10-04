@@ -20,7 +20,7 @@ export function batchPotential(ns: NS, target: string): number {
     server.hackDifficulty = server.minDifficulty;
     let difficulty = server.hackDifficulty;
     if(ns.fileExists('Formulas.exe')){
-        else difficulty = ns.formulas.hacking.weakenTime(server, ns.getPlayer()) / ns.formulas.hacking.hackChance(server, ns.getPlayer());
+        difficulty = ns.formulas.hacking.weakenTime(server, ns.getPlayer()) / ns.formulas.hacking.hackChance(server, ns.getPlayer());
     }
     else if(server.requiredHackingSkill > ns.getHackingLevel() / 2) return 0;
     return server.moneyMax / difficulty;
