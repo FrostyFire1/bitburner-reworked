@@ -6,10 +6,11 @@ const TARGET = "silver-helix";
 
 export async function main(ns: NS) {
     ns.disableLog('ALL'); ns.clearLog(); ns.tail();
+    
     const targets = getServerList(ns)
     .sort((a,b) => {return batchPotential(ns, b) - batchPotential(ns, a);});
     let toPrep = targets.filter(a => !isPrepped(ns, a));
-    prepServer(ns, TARGET);
+    await prepServer(ns, TARGET);
 }
 
 function simulateBatch(ns: NS, server: string){

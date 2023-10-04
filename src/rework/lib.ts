@@ -39,10 +39,26 @@ export function isPrepped(ns: NS, server: string): boolean{
  * @param ns The ns interface
  * @param hostname Hostname of the server you want to prep
  */
-export function prepServer(ns: NS, hostname: string) {
+export async function prepServer(ns: NS, hostname: string) {
     const prepInfo = getPrepInfo(ns, hostname);
     ns.print("INFO: PREPPING " +  hostname + " WITH " prepInfo);
-    distribute(ns, WEAKEN_PATH, prepInfo.preWThreads, [hostname]);
+    const delay = 25;
+    const wTime = ns.getWeakenTime(hostname);
+    const gTime = ns.getGrowTime(hostname);
+
+    let threadsLeft = Object.values(prepInfo).reduce((a,b) => a+b,0);
+    while(threadsLeft > 0){
+        prepInfo.preWThreads = distribute(ns, WEAKEN_PATH, prepInfo.preWThreads, [hostname]);
+        prepInfo.gThreads = distribute(ns, GROW_PATH, prepInfo.gThreads, [hostname, wTime-gTime+delay]);
+        prepInfo.postWThreads = distribute(ns, WEAKEN_PATH, prepInfo.postWThreads, [hostname,delay*2]);
+
+        threadsLeft = Object.values(prepInfo).reduce((a,b) => a+b,0);
+        if(threadsLeft > 0) {
+            ns.print(`WARN: ${threadsLeft} THREADS REMAINING FOR ${hostname}. TRYING REMAINDER IN 10 SECONDS`);
+            await ns.sleep(10*1000);
+        }
+    }
+
 }
 
 /**
@@ -73,6 +89,7 @@ function getPrepInfo(ns: NS, hostname: string): object {
     }
 
 }
+
 /**
  * Distributes a given script across all available servers up to the given amount of threads.
  * @param script Script to distribute  
@@ -81,6 +98,8 @@ function getPrepInfo(ns: NS, hostname: string): object {
  * @returns Number of threads the function couldn't distribute. If threads is 0 then all threads have been successfully distributed.
  */
 function distribute(ns: NS, script: string, threads: number, args, useHome = false): number{
+    if(threads === 0) return 0;
+
     let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
     if(useHome) potentialServers.push("home");
 

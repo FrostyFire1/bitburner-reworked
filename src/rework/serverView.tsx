@@ -1,4 +1,4 @@
-import { getServerList } from "./rework/lib";
+import { getServerList, isPrepped } from "./rework/lib";
 import type { NS } from "@ns";
 export async function main(ns: NS) {
     ns.disableLog("ALL"); ns.clearLog(); ns.tail();
@@ -26,6 +26,7 @@ export async function main(ns: NS) {
             minSec:[paragraph("white","Min Sec")],
             curSec:[paragraph("green","Current Sec")],
             portReq:[paragraph("white","Port Req")],
+            prepped:[paragraph("white","Batch prepped")]
         }
     
         for(const server of servers){
@@ -46,8 +47,9 @@ export async function main(ns: NS) {
                 paragraph("purple", `${server.ramUsed} / ${server.maxRam} GB`)
             );
             //Money
+            const moneyPercentage = server.moneyMax === 0 ? 0 : server.moneyAvailable / server.moneyMax;
             infoList.money.push(
-                paragraph("yellow", `${ns.formatNumber(server.moneyAvailable)} / ${ns.formatNumber(server.moneyMax)} (${ns.formatPercent(1)})`)
+                paragraph("yellow", `${ns.formatNumber(server.moneyAvailable)} / ${ns.formatNumber(server.moneyMax)} (${ns.formatPercent(moneyPercentage)})`)
             );
             //Min Security
             infoList.minSec.push(
@@ -67,6 +69,14 @@ export async function main(ns: NS) {
             infoList.portReq.push(
                 paragraph(color, server.numOpenPortsRequired)
             )
+            //Batch prepped
+            color = "green"
+            const prepped = isPrepped(ns, server.hostname);
+            symbol = prepped ? "✔" : "✘";
+            if(symbol === "✘") color = "red";
+            infoList.prepped.push(
+                paragraph(color, symbol)
+            );
         }
         const column = (list) =>
         <div style={{"border": "1px solid gray"}}>
@@ -81,6 +91,7 @@ export async function main(ns: NS) {
                 {column(infoList.minSec)}
                 {column(infoList.curSec)}
                 {column(infoList.portReq)}
+                {column(infoList.prepped)}
                 
             </div>
         )
