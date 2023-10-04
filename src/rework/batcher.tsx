@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import {getServerList, batchPotential, isPrepped} from "./rework/lib";
+import {getServerList, batchPotential, isPrepped, prepServer} from "./rework/lib";
 let STEAL_PERCENTAGE = 0.5;
 
 const TARGET = "foodnstuff";
@@ -9,6 +9,7 @@ export async function main(ns: NS) {
     const targets = getServerList(ns)
     .sort((a,b) => {return batchPotential(ns, b) - batchPotential(ns, a);});
     let toPrep = targets.filter(a => !isPrepped(ns, a));
+    prepServer(ns, TARGET);
 }
 
 function simulateBatch(ns: NS, server: string){

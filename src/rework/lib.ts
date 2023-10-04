@@ -41,6 +41,7 @@ export function isPrepped(ns: NS, server: string): boolean{
  */
 export function prepServer(ns: NS, hostname: string) {
     const prepInfo = getPrepInfo(ns, hostname);
+    ns.print("INFO: PREPPING " +  hostname + " WITH " prepInfo);
 }
 
 /**
@@ -58,7 +59,7 @@ function getPrepInfo(ns: NS, hostname: string): object {
 
     const preWThreads = Math.ceil((server.hackDifficulty - server.minDifficulty) / SEC_DEC);
     server.hackDifficulty = server.minDifficulty;
-    ns.print(`${server.hackDifficulty} <- ${server.minDifficulty}`);
+
     const gThreads = f.hacking.growThreads(server, player, server.moneyMax, 1);
     server.hackDifficulty = Math.min(server.hackDifficulty + ns.growthAnalyzeSecurity(gThreads, hostname, 1), 100);
 
@@ -70,6 +71,36 @@ function getPrepInfo(ns: NS, hostname: string): object {
         postWThreads,
     }
 
+}
+/**
+ * Distributes a given script across all available servers up to the given amount of threads.
+ * @param script Script to distribute  
+ * @param threads Total amount of threads to distribute the script to
+ * @param useHome Optional. If set to true the function will also take up all the available ram on the home server
+ */
+function distribute(ns: NS, script: string, threads: number, useHome = false): number{
+    ns.print(`INFO: DISTRIBUTING ${threads} THREADS OF ${script}`)
+    let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
+    if(useHome) potentialServers.push("home");
+
+    const distributables = potentialServers
+    .filter(hostname => ns.hasRootAccess(hostname))
+    .filter(hostname => ns.getServerMaxRam(hostname) > 0);
+
+    for(const hostname of distributables){
+        if(threads === 0) break;
+
+        const server = ns.getServer(hostname);
+        const usableRam = server.maxRam - server.ramUsed;
+        const usableThreads = Math.floor(usableRam / ns.getScriptRam(script));
+        if (usableThreads === 0) continue;
+
+        const threadCount = Math.min(usableThreads, threads);
+        threads -= threadCount;
+        ns.exec(script, hostname, threadCount);
+    }
+    if(threads > 0) ns.print(`WARN: ${threads} THREADS OF ${script} WERE NOT DISTRIBUTED!`);
+    return threads;
 }
 //-----------------------------------------OTHER----------------------------------------------------------------------------
 export async function main(ns: NS): Promise<void> {
