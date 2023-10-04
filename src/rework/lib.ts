@@ -78,6 +78,7 @@ function getPrepInfo(ns: NS, hostname: string): object {
  * @param script Script to distribute  
  * @param threads Total amount of threads to distribute the script to
  * @param useHome Optional. If set to true the function will also take up all the available ram on the home server
+ * @returns Number of threads the function couldn't distribute. If threads is 0 then all threads have been successfully distributed.
  */
 function distribute(ns: NS, script: string, threads: number, args, useHome = false): number{
     let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
