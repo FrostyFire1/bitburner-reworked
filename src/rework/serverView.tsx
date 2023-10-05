@@ -1,11 +1,11 @@
-import { getServerList, isPrepped } from "./rework/lib";
+import { getServerList, isPrepped } from "/rework/lib";
 import type { NS } from "@ns";
 export async function main(ns: NS) {
     ns.disableLog("ALL"); ns.clearLog(); ns.tail();
     const size = ns.ui.windowSize();
     ns.resizeTail(size[0],size[1]);
     ns.moveTail(0,0);
-    const servers = getServerList(ns)
+    let servers = getServerList(ns)
     .filter(s => s != "home" && !ns.getPurchasedServers().includes(s))
     .map(s=>ns.getServer(s))
     .sort((a,b)=>{return b.moneyMax - a.moneyMax});
@@ -96,6 +96,10 @@ export async function main(ns: NS) {
             </div>
         )
         await ns.sleep(500);
+        servers = getServerList(ns)
+        .filter(s => s != "home" && !ns.getPurchasedServers().includes(s))
+        .map(s=>ns.getServer(s))
+        .sort((a,b)=>{return b.moneyMax - a.moneyMax});
     }
     
 }
