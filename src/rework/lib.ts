@@ -102,7 +102,7 @@ function getPrepInfo(ns: NS, hostname: string): object {
  * @param useHome Optional. If set to false the home server will be ignored
  * @returns Number of threads the function couldn't distribute. If threads is 0 then all threads have been successfully distributed.
  */
-function distribute(ns: NS, script: string, threads: number, args, simulate = false, useHome = true): number{
+export function distribute(ns: NS, script: string, threads: number, args, simulate = false, useHome = true): number{
     if(threads === 0) return 0;
     const scriptRam = ns.getScriptRam(script);
     let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()]
@@ -111,7 +111,8 @@ function distribute(ns: NS, script: string, threads: number, args, simulate = fa
     const distributables = potentialServers
     .filter(s => s.hasAdminRights && s.maxRam > 0)
 
-    for(const server of distributables){
+    for(let i = 0; i < distributables.length; i++){
+        const server = distributables[i];
         if(threads === 0) break;
         if(server.hostname === "home" && !useHome) continue;
 
@@ -122,10 +123,16 @@ function distribute(ns: NS, script: string, threads: number, args, simulate = fa
         const threadCount = Math.min(usableThreads, threads);
         threads -= threadCount;
 
-        if(simulate) server.ramUsed += threadCount*scriptRam;
+        if(simulate) {
+            server.ramUsed += threadCount*scriptRam;
+            if(server.maxRam - server.ramUsed < scriptRam){
+                distributables.splice(i,1);
+                i--;
+            }
+        }
         else{
-            const process = ns.exec(script, hostname, threadCount, ...args);
-            if(process == 0) ns.print(`ERROR: COULDN'T RUN ${script} ON ${hostname}`);
+            const pid = ns.exec(script, hostname, threadCount, ...args);
+            if(pid == 0) ns.print(`ERROR: COULDN'T RUN ${script} ON ${hostname}`);
         }
 
     }

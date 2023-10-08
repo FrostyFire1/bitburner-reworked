@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import {getServerList, batchPotential, isPrepped, prepServer, movePayload} from "/rework/lib";
+import {getServerList, batchPotential, isPrepped, prepServer, movePayload, distribute} from "/rework/lib";
 let STEAL_PERCENTAGE = 0.5;
 const DIR = 'scripts/payload/';
 
@@ -54,23 +54,14 @@ function hasEnoughThreads(ns: NS, target: string, batchInfo: object){
 
     for(let [threads, script] of Object.values(batchInfo)){
         const scriptRam = ns.getScriptRam(script);
-        for(let i = 0; i < usableServers.length; i++){
-            const server = usableServers[i];
-            let ram = server.maxRam - server.ramUsed;
-            let sThreads = Math.min(threads, Math.floor(ram / scriptRam));
-            threads -= sThreads;
-            server.ramUsed += sThreads*scriptRam;
-            if(server.maxRam - server.ramUsed < scriptRam){
-                usableServers.splice(i,1);
-                i--;
-            }
-            if(threads === 0) break;
-        }
+        threads -= distribute(ns, script, threads, [], true);
+        if(threads > 0) break;
     }
 
     const threadsLeft = Object.values(batchInfo)
     .map(a=>a[0])
     .reduce((a,b) => {return a+b},0);
+    ns.print(threadsLeft);
     return threadsLeft > 0;
     
 }
