@@ -94,34 +94,40 @@ function getPrepInfo(ns: NS, hostname: string): object {
 }
 
 /**
- * Distributes a given script across all available servers up to the given amount of threads.
+ * Simulates a distribution or distributes a given script across all available servers up to the given amount of threads.
  * @param script Script to distribute  
  * @param threads Total amount of threads to distribute the script to
- * @param useHome Optional. If set to false the function will ignore the home server
+ * @param args Script arguments
+ * @param simulate Optional. If set to true the distirbution will be simulated
+ * @param useHome Optional. If set to false the home server will be ignored
  * @returns Number of threads the function couldn't distribute. If threads is 0 then all threads have been successfully distributed.
  */
-function distribute(ns: NS, script: string, threads: number, args, useHome = true): number{
+function distribute(ns: NS, script: string, threads: number, args, simulate = false, useHome = true): number{
     if(threads === 0) return 0;
-
-    let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()];
+    const scriptRam = ns.getScriptRam(script);
+    let potentialServers = [...getServerList(ns), ...ns.getPurchasedServers()]
+    .map(s => ns.getServer(s));
 
     const distributables = potentialServers
-    .filter(hostname => ns.hasRootAccess(hostname))
-    .filter(hostname => ns.getServerMaxRam(hostname) > 0);
+    .filter(s => s.hasAdminRights && s.maxRam > 0)
 
-    for(const hostname of distributables){
+    for(const server of distributables){
         if(threads === 0) break;
-        if(hostname === "home" && !useHome) continue;
+        if(server.hostname === "home" && !useHome) continue;
 
-        const server = ns.getServer(hostname);
         const usableRam = server.maxRam - server.ramUsed;
-        const usableThreads = Math.floor(usableRam / ns.getScriptRam(script));
+        const usableThreads = Math.floor(usableRam / scriptRam);
         if (usableThreads === 0) continue;
 
         const threadCount = Math.min(usableThreads, threads);
         threads -= threadCount;
-        const process = ns.exec(script, hostname, threadCount, ...args);
-        if(process == 0) ns.print(`ERROR: COULDN'T RUN ${script} ON ${hostname}`);
+
+        if(simulate) server.ramUsed += threadCount*scriptRam;
+        else{
+            const process = ns.exec(script, hostname, threadCount, ...args);
+            if(process == 0) ns.print(`ERROR: COULDN'T RUN ${script} ON ${hostname}`);
+        }
+
     }
     return threads;
 }
