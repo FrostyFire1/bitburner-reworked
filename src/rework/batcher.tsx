@@ -1,7 +1,7 @@
 import { NS } from "@ns";
 import {getServerList, batchPotential, isPrepped, prepServer, movePayload} from "/rework/lib";
 let STEAL_PERCENTAGE = 0.5;
-
+const DIR = 'scripts/payload/';
 
 export async function main(ns: NS) {
     ns.disableLog('ALL'); ns.clearLog(); ns.tail();
@@ -10,14 +10,15 @@ export async function main(ns: NS) {
     const targetable = getServerList(ns)
     .sort((a,b) => {return batchPotential(ns, b) - batchPotential(ns, a);})
     .filter(hostname => ns.hasRootAccess(hostname));
-    let toPrep = targetable.filter(s => !isPrepped(ns, s));
-    for(const hostname of toPrep){
-        await prepServer(ns, hostname);
-    }
+    // let toPrep = targetable.filter(s => !isPrepped(ns, s));
+    // for(const hostname of toPrep){
+    //     await prepServer(ns, hostname);
+    // }
+    //const target = targetable.filter(s => isPrepped(ns,s))[0];
+    const target = "n00dles";
+    const batchInfo = simulateBatch(ns, target);
 
-    const target = targetable.filter(s => isPrepped(ns,s))[0];
-
-    if(hasEnoughThreads(ns, target)) batchServer(ns, target);
+    if(hasEnoughThreads(ns, target, batchInfo)) batchServer(ns, target);
 
 }
 
@@ -40,15 +41,38 @@ function simulateBatch(ns: NS, server: string){
     const wThreads = Math.ceil((sim.hackDifficulty - sim.minDifficulty) / SEC_DEC);
 
     return {
-        hThreads,
-        gThreads,
-        wThreads,
+        hThreads: [hThreads,DIR+'hack.js'],
+        gThreads: [gThreads,DIR+'grow.js'],
+        wThreads: [wThreads, DIR+'weaken.js'],
     };
-
 }
 
-function hasEnoughThreads(ns: NS, target: string){
+function hasEnoughThreads(ns: NS, target: string, batchInfo: object){
+    let usableServers = [...getServerList(ns), ...ns.getPurchasedServers()]
+    .map(s=>ns.getServer(s))
+    .filter(s => s.maxRam > 0 && s.hasAdminRights);
 
+    for(let [threads, script] of Object.values(batchInfo)){
+        const scriptRam = ns.getScriptRam(script);
+        for(let i = 0; i < usableServers.length; i++){
+            const server = usableServers[i];
+            let ram = server.maxRam - server.ramUsed;
+            let sThreads = Math.min(threads, Math.floor(ram / scriptRam));
+            threads -= sThreads;
+            server.ramUsed += sThreads*scriptRam;
+            if(server.maxRam - server.ramUsed < scriptRam){
+                usableServers.splice(i,1);
+                i--;
+            }
+            if(threads === 0) break;
+        }
+    }
+
+    const threadsLeft = Object.values(batchInfo)
+    .map(a=>a[0])
+    .reduce((a,b) => {return a+b},0);
+    return threadsLeft > 0;
+    
 }
 
 function batchServer(ns: NS, target: string){
